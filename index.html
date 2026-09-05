@@ -491,7 +491,7 @@ function round4(n){ return Math.round(n * 10000) / 10000; }
 function derived(d){
   const totalPrice = d.headPrice * d.headQty + d.trailerPrice * d.trailerQty;
   const tax = autoTax(d);
-  const ins = findFeeAmt(d, '保险费');
+  const ins = findIns(d);
   const base = totalPrice + (d.financeTax ? tax : 0) + (d.financeIns ? ins : 0);
   let downPayment, loanAmount, dpRate;
   if(d.loanMode === 'manual'){
@@ -627,6 +627,12 @@ function autoTax(d){
 }
 function findFeeAmt(d, name){
   const it = (d.feeItems || []).find(i => i.name === name);
+  return it ? (parseFloat(it.amount) || 0) : 0;
+}
+function findIns(d){
+  const items = d.feeItems || [];
+  let it = items.find(i => i.name === '保险费');
+  if(!it) it = items.find(i => (i.name || '').indexOf('保险') >= 0 && (i.name || '').indexOf('三者') < 0);
   return it ? (parseFloat(it.amount) || 0) : 0;
 }
 function feeRefText(it){
