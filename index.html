@@ -49,6 +49,7 @@ input:disabled{background:#f1f5f9;color:#64748b}
 .chip2{display:inline-flex;align-items:center;gap:5px;border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:8px 15px;font-size:14px;cursor:pointer;color:var(--muted);margin:4px 8px 0 0;font-family:inherit}
 .chip2.on{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600}
 .chip2:disabled{background:#eef2f7;color:#94a3b8;cursor:not-allowed}
+.upper{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;word-break:break-all}
 .fee-table{width:100%;border-collapse:collapse}
 .fee-table th,.fee-table td{border:1px solid var(--border);padding:5px 6px;vertical-align:middle}
 .fee-table th{background:#f8fafc;font-size:13px;text-align:left}
@@ -180,9 +181,9 @@ table.mini tr.tot td{background:#eef4ff;font-weight:700}
     <div class="card">
       <h2>💰 车辆价格与贷款 <span class="hint">（改动即时重算）</span></h2>
       <div class="grid" style="margin-top:10px">
-        <div class="field"><label>主车单价（元）</label><input id="f_headPrice" type="number" inputmode="decimal" min="0" step="0.01" value="340000"></div>
+        <div class="field"><label>主车单价（元）</label><input id="f_headPrice" type="number" inputmode="decimal" min="0" step="0.01" value="340000"><div class="upper" id="headUpper"></div></div>
         <div class="field"><label>主车数量（台）</label><input id="f_headQty" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
-        <div class="field"><label>挂车单价（元，无则填 0）</label><input id="f_trailerPrice" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
+        <div class="field"><label>挂车单价（元，无则填 0）</label><input id="f_trailerPrice" type="number" inputmode="decimal" min="0" step="0.01" value="0"><div class="upper" id="trailerUpper"></div></div>
         <div class="field"><label>挂车数量（台）</label><input id="f_trailerQty" type="number" inputmode="numeric" min="0" step="1" value="0"></div>
         <div class="field"><label>期望首付比例（%）</label><input id="f_dpRate" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="20"></div>
         <div class="field"><label>年利率（%）</label><input id="f_rate" type="number" inputmode="decimal" min="0" step="0.01" value="6.5"></div>
@@ -619,6 +620,50 @@ function carTextOf(d){
   const total = (d.headPrice * d.headQty || 0) + (d.trailerPrice * d.trailerQty || 0);
   return parts.length ? parts.join(' + ') + ' ＝ ' + fmt(total, 0) + ' 元' : fmt(total, 0) + ' 元';
 }
+function rmbUpper(n){
+  n = Math.round((Number(n) || 0) * 100) / 100;
+  if(n < 0) n = 0;
+  const nums = '零壹贰叁肆伍陆柒捌玖';
+  const intUnits = ['', '拾', '佰', '仟'];
+  const bigUnits = ['', '万', '亿', '万亿'];
+  const integer = Math.floor(n);
+  const frac = Math.round((n - integer) * 100);
+  const jiao = Math.floor(frac / 10), fen = frac % 10;
+  function section(x){
+    if(x === 0) return '';
+    const q = Math.floor(x / 1000), b = Math.floor(x % 1000 / 100), s = Math.floor(x % 100 / 10), o = x % 10;
+    let out = '';
+    if(q > 0) out += nums[q] + '仟';
+    if(b > 0){ out += nums[b] + '佰'; }
+    else if(out && (s > 0 || o > 0)) out += '零';
+    if(s > 0){ out += nums[s] + '拾'; }
+    else if(out && o > 0 && !out.endsWith('零')) out += '零';
+    if(o > 0) out += nums[o];
+    return out;
+  }
+  let res = '';
+  if(integer === 0) res = '零';
+  else {
+    const groups = [];
+    let t = integer;
+    while(t > 0){ groups.push(t % 10000); t = Math.floor(t / 10000); }
+    for(let g = groups.length - 1; g >= 0; g--){
+      const v = groups[g];
+      if(v === 0){ if(res && !res.endsWith('零')) res += '零'; continue; }
+      const seg = section(v);
+      if(res !== '' && res !== '零' && !res.endsWith('零') && v < 1000) res += '零';
+      res += seg + bigUnits[g];
+    }
+    if(res.endsWith('零')) res = res.slice(0, -1);
+  }
+  res += '元';
+  if(jiao === 0 && fen === 0) res += '整';
+  else {
+    if(jiao > 0) res += nums[jiao] + '角'; else res += '零';
+    if(fen > 0) res += nums[fen] + '分';
+  }
+  return res;
+}
 function autoTax(d){
   const ne = d.isNewEnergy !== false;
   const headDiv = ne ? 11.3 * 2 : 11.3;      // 新能源 主车÷11.3÷2；非新能源 主车÷11.3
@@ -657,7 +702,7 @@ function estimateRows(d, dr){
   rows.push({ k: '车款（总车款）', v: esc(carTextOf(d)), strong: true, left: true });
   if(tax > 0) rows.push({ k: '购置税', v: fmt(tax, 2) + ' 元' });
   if(ins > 0) rows.push({ k: '保险费（多退少补）', v: fmt(ins, 2) + ' 元' });
-  rows.push({ k: '首付款（' + fmt(dr.dpRate, 2) + '%）', v: fmt(dr.downPayment, 2) + ' 元', strong: true });
+  rows.push({ k: '首付款（合计实付）', v: fmt(dr.actualDown, 2) + ' 元', strong: true });
   if(visible.length){
     rows.push({ sec: '月供参考' });
     visible.forEach(n => {
@@ -862,7 +907,7 @@ function buildXls(d){
   r1 += xlsRow([{ t: '车款（总车款）' }, { t: carTextOf(d) }]);
   if(tax > 0) r1 += xlsRow([{ t: '购置税' }, { n: tax, style: 'Money' }]);
   if(ins > 0) r1 += xlsRow([{ t: '保险费（多退少补）' }, { n: ins, style: 'Money' }]);
-  r1 += xlsRow([{ t: '首付款' }, { n: dr.downPayment, style: 'Money0' }]);
+  r1 += xlsRow([{ t: '首付款（合计实付）' }, { n: dr.actualDown, style: 'Money' }]);
   visible.forEach(n => {
     const mf = monthlyFinal(n, dr.loanAmount, d.rate, d.subsidy);
     r1 += xlsRow([{ t: n + '期 月供' + (d.subsidy > 0 ? '（含贴息）' : '') }, { n: mf.final, style: 'Money' }]);
@@ -1079,6 +1124,8 @@ function render(){
   const cT = $('chipFinTax'); if(cT) cT.classList.toggle('on', !!state.financeTax);
   const cI = $('chipFinIns'); if(cI) cI.classList.toggle('on', !!state.financeIns);
   $('f_dpRate').value = state.dpTarget;
+  const hu = $('headUpper'); if(hu) hu.textContent = '单价大写：' + rmbUpper(num('f_headPrice'));
+  const tu = $('trailerUpper'); if(tu) tu.textContent = '单价大写：' + rmbUpper(num('f_trailerPrice'));
   $('v_totalPrice').textContent = fmt(dr.totalPrice, 0);
   $('v_base').textContent = fmt(dr.base, 2);
   $('v_downPayment').textContent = fmt(dr.downPayment, 2);
