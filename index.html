@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#14532d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
-<meta name="theme-color" content="#14532d">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -47,6 +46,9 @@ input:disabled{background:#f1f5f9;color:#64748b}
 .seg{display:flex;gap:8px}
 .seg button{flex:1;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:10px;font-size:15px;cursor:pointer;color:var(--muted)}
 .seg button.on{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:700}
+.chip2{display:inline-flex;align-items:center;gap:5px;border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:8px 15px;font-size:14px;cursor:pointer;color:var(--muted);margin:4px 8px 0 0;font-family:inherit}
+.chip2.on{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600}
+.chip2:disabled{background:#eef2f7;color:#94a3b8;cursor:not-allowed}
 .fee-table{width:100%;border-collapse:collapse}
 .fee-table th,.fee-table td{border:1px solid var(--border);padding:5px 6px;vertical-align:middle}
 .fee-table th{background:#f8fafc;font-size:13px;text-align:left}
@@ -182,28 +184,48 @@ table.mini tr.tot td{background:#eef4ff;font-weight:700}
         <div class="field"><label>主车数量（台）</label><input id="f_headQty" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
         <div class="field"><label>挂车单价（元，无则填 0）</label><input id="f_trailerPrice" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
         <div class="field"><label>挂车数量（台）</label><input id="f_trailerQty" type="number" inputmode="numeric" min="0" step="1" value="0"></div>
-        <div class="field"><label>首付比例（%）</label><input id="f_dpRate" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="20"></div>
+        <div class="field"><label>期望首付比例（%）</label><input id="f_dpRate" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="20"></div>
         <div class="field"><label>年利率（%）</label><input id="f_rate" type="number" inputmode="decimal" min="0" step="0.01" value="6.5"></div>
         <div class="field"><label>贷款银行</label><input id="f_bank" type="text" placeholder="如：平安" value="平安"></div>
         <div class="field"><label>贴息（元/月，可选）</label><input id="f_subsidy" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
       </div>
+            <div class="field" style="margin-top:11px">
+        <label>车辆类型（决定购置税算法）</label>
+        <div class="seg">
+          <button type="button" id="btnTypeNE" class="on">⚡ 新能源</button>
+          <button type="button" id="btnTypeICE">⛽ 非新能源</button>
+        </div>
+      </div>
       <div class="field" style="margin-top:11px">
         <label>贷款额计算方式</label>
         <div class="seg">
-          <button type="button" id="btnLoanAuto" class="on">自动（总车款 − 首付款）</button>
+          <button type="button" id="btnLoanAuto" class="on">自动（按比例 + 贷款额取整百）</button>
           <button type="button" id="btnLoanManual">手动输入贷款额</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top:11px">
+        <label>贷款范围（勾选后，购置税/保险也计入“贷款基数”一起按比例贷款）</label>
+        <div>
+          <button type="button" class="chip2 on" disabled>车价（必含）</button>
+          <button type="button" class="chip2" id="chipFinTax">购置税</button>
+          <button type="button" class="chip2" id="chipFinIns">保险</button>
         </div>
       </div>
       <div class="field" style="margin-top:10px">
         <label>贷款额（元）</label>
-        <input id="f_loanInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="手动模式下输入贷款额">
+        <input id="f_loanInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="自动模式自动取整百；手动模式可自行输入">
       </div>
       <div class="grid" style="margin-top:11px">
         <div class="ro-box"><span>总车款（元）</span><b id="v_totalPrice">0</b></div>
+        <div class="ro-box"><span>贷款基数（元）</span><b id="v_base">0</b></div>
         <div class="ro-box"><span>首付款（元）</span><b id="v_downPayment">0</b></div>
-        <div class="ro-box hl"><span>贷款额（元）</span><b id="v_loanAmount">0</b></div>
+        <div class="ro-box hl"><span>贷款额（取整百，元）</span><b id="v_loanAmount">0</b></div>
       </div>
-      <p style="font-size:12.5px;color:var(--muted);margin-top:9px">规则：自动模式 首付款 = 总车款 × 首付比例 ÷ 100，贷款额 = 总车款 − 首付款；手动模式直接输入贷款额，首付比例自动反算。</p>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:9px">
+        自动模式：首付款 = 贷款基数 × 期望首付比例 ÷ 100；贷款额自动向下取整到百，取整差额并入首付款，
+        首付比例按实际值自动更新。<b>实际首付比例：<span id="v_dpRate2" style="color:#1668dc">—</span></b><br>
+        贷款基数 = 总车款 ＋（勾选计入的购置税/保险）。手动模式：直接填贷款额，首付款 = 贷款基数 − 贷款额，首付比例自动反算。
+      </p>
     </div>
 
     <div class="card">
@@ -219,7 +241,7 @@ table.mini tr.tot td{background:#eef4ff;font-weight:700}
         <div class="ro-box hl"><span>费用合计（元）</span><b id="v_feeTotal">0</b></div>
         <div class="ro-box"><span>实付首付款 = 费用合计 − 贷款额（元）</span><b id="v_actualDown">0</b></div>
       </div>
-      <p style="font-size:12.5px;color:var(--muted);margin-top:9px">「车款」自动等于总车款；「购置税」自动按 (主车单价÷11.3÷2)×主车数量 ＋ (挂车单价÷11.3÷2)×挂车数量 生成；实收首付款 = 费用合计 − 贷款额；其余费用按右侧备注参考价填写。</p>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:9px">「车款」自动等于总车款；「购置税」按车型类型自动计算（新能源：主车单价÷11.3÷2×主车数量＋挂车单价÷11.3÷2×挂车数量；非新能源：主车单价÷11.3×主车数量＋挂车单价÷11.3÷2×挂车数量）；实收首付款 = 费用合计 − 贷款额；其余费用按右侧备注填写。</p>
     </div>
 
     <div class="card">
@@ -434,7 +456,11 @@ const state = {
   feeItems: defaultFees(),
   showPeriods: { 24: true, 30: true, 36: true },
   loanMode: 'auto',
-  loanInput: ''
+  loanInput: '',
+  dpTarget: 20,
+  isNewEnergy: true,
+  financeTax: false,
+  financeIns: false
 };
 /* ---------- 数据收集与派生 ---------- */
 function collect(){
@@ -447,13 +473,16 @@ function collect(){
     headQty: Math.max(1, parseInt($('f_headQty').value, 10) || 1),
     trailerPrice: num('f_trailerPrice'),
     trailerQty: Math.max(0, parseInt($('f_trailerQty').value, 10) || 0),
-    dpRate: num('f_dpRate'), rate: num('f_rate'),
+    dpRate: state.dpTarget, rate: num('f_rate'),
     bank: $('f_bank').value.trim(),
     subsidy: num('f_subsidy'),
     notes: $('f_notes') ? $('f_notes').value.trim() : '',
     company: $('f_company') ? $('f_company').value.trim() : '',
     loanMode: state.loanMode,
     loanInput: state.loanInput === '' ? (num('f_loanInput') || 0) : state.loanInput,
+    isNewEnergy: state.isNewEnergy !== false,
+    financeTax: !!state.financeTax,
+    financeIns: !!state.financeIns,
     feeItems: state.feeItems.map(it => ({ name: it.name, kind: it.kind, amount: it.kind === 'car' ? null : (parseFloat(it.amount) || 0) })),
     showPeriods: { 24: !!state.showPeriods[24], 30: !!state.showPeriods[30], 36: !!state.showPeriods[36] }
   };
@@ -461,26 +490,34 @@ function collect(){
 function round4(n){ return Math.round(n * 10000) / 10000; }
 function derived(d){
   const totalPrice = d.headPrice * d.headQty + d.trailerPrice * d.trailerQty;
+  const tax = autoTax(d);
+  const ins = findFeeAmt(d, '保险费');
+  const base = totalPrice + (d.financeTax ? tax : 0) + (d.financeIns ? ins : 0);
   let downPayment, loanAmount, dpRate;
   if(d.loanMode === 'manual'){
-    loanAmount = Math.min(Math.max(Number(d.loanInput) || 0, 0), totalPrice);
-    downPayment = round2(totalPrice - loanAmount);
-    dpRate = totalPrice > 0 ? round4((totalPrice - loanAmount) / totalPrice * 100) : 0;
+    loanAmount = Math.min(Math.max(round2(Number(d.loanInput) || 0), 0), base);
+    downPayment = round2(base - loanAmount);
+    dpRate = base > 0 ? round4(downPayment / base * 100) : 0;
   } else {
-    dpRate = d.dpRate;
-    downPayment = round2(totalPrice * dpRate / 100);
-    loanAmount = round2(totalPrice - downPayment);
+    const downRaw = round2(base * d.dpRate / 100);   // 期望比例算出的首付款
+    let loan = base - downRaw;
+    loan = Math.floor(loan / 100) * 100;             // 贷款额向下取整到百
+    if(loan < 0) loan = 0;
+    loanAmount = round2(loan);
+    downPayment = round2(base - loanAmount);         // 取整差额并入首付款
+    dpRate = base > 0 ? round4(downPayment / base * 100) : 0;  // 实际首付比例
   }
   let feeTotal = totalPrice;
   (d.feeItems || []).forEach(it => {
     if(it.kind === 'car') return;
-    if(it.kind === 'tax'){ feeTotal += autoTax(d); return; }
+    if(it.kind === 'tax'){ feeTotal += tax; return; }
     feeTotal += (parseFloat(it.amount) || 0);
   });
   feeTotal = round2(feeTotal);
   const actualDown = round2(feeTotal - loanAmount);
-  return { totalPrice, downPayment, loanAmount, dpRate, feeTotal, actualDown };
+  return { totalPrice, base, tax, ins, downPayment, loanAmount, dpRate, feeTotal, actualDown };
 }
+
 function monthlyFinal(n, loanAmount, rate, subsidy){
   const raw = schedule(n, loanAmount, rate).monthly;
   const final = round2(raw - (parseFloat(subsidy) || 0));
@@ -504,7 +541,7 @@ function rebuildFees(){
       const b = document.createElement('b'); b.id = (it.kind === 'car') ? 'feeCarAmt' : 'feeTaxAmt'; b.textContent = '0'; b.style.fontSize = '16px';
       box.appendChild(b);
       tdA.appendChild(box);
-      if(it.ref) tdR.innerHTML = esc(it.ref);
+      const rt = feeRefText(it); if(rt) tdR.innerHTML = esc(rt);
     } else {
       const inp = document.createElement('input');
       inp.type = 'number'; inp.inputMode = 'decimal'; inp.min = '0'; inp.step = '0.01';
@@ -512,7 +549,7 @@ function rebuildFees(){
       inp.placeholder = '0';
       inp.addEventListener('input', () => { state.feeItems[idx].amount = parseFloat(inp.value) || 0; render(); });
       tdA.appendChild(inp);
-      if(it.ref) tdR.innerHTML = esc(it.ref);
+      const rt = feeRefText(it); if(rt) tdR.innerHTML = esc(rt);
       if(it.custom){
         const del = document.createElement('button');
         del.className = 'fee-del'; del.type = 'button'; del.textContent = '✕';
@@ -582,9 +619,27 @@ function carTextOf(d){
   return parts.length ? parts.join(' + ') + ' ＝ ' + fmt(total, 0) + ' 元' : fmt(total, 0) + ' 元';
 }
 function autoTax(d){
-  const head = (d.headPrice || 0) / 11.3 / 2 * (d.headQty || 0);
-  const trailer = (d.trailerPrice || 0) / 11.3 / 2 * (d.trailerQty || 0);
+  const ne = d.isNewEnergy !== false;
+  const headDiv = ne ? 11.3 * 2 : 11.3;      // 新能源 主车÷11.3÷2；非新能源 主车÷11.3
+  const head = (d.headPrice || 0) / headDiv * (d.headQty || 0);
+  const trailer = (d.trailerPrice || 0) / 11.3 / 2 * (d.trailerQty || 0);   // 挂车均÷11.3÷2
   return round2(head + trailer);
+}
+function findFeeAmt(d, name){
+  const it = (d.feeItems || []).find(i => i.name === name);
+  return it ? (parseFloat(it.amount) || 0) : 0;
+}
+function feeRefText(it){
+  if(it.name === '购置税') return state.isNewEnergy !== false
+    ? '(主车单价÷11.3÷2)×主车数量＋(挂车单价÷11.3÷2)×挂车数量'
+    : '(主车单价÷11.3)×主车数量＋(挂车单价÷11.3÷2)×挂车数量';
+  if(it.name === '车船税') return state.isNewEnergy !== false ? '新能源车没有车船税' : '';
+  return it.ref || '';
+}
+function setVehicleType(ne){
+  state.isNewEnergy = !!ne;
+  rebuildFees();
+  render();
 }
 function estimateRows(d, dr){
   const visible = PERIODS.filter(n => state.showPeriods[n]);
@@ -595,7 +650,7 @@ function estimateRows(d, dr){
   rows.push({ k: '车款（总车款）', v: esc(carTextOf(d)), strong: true, left: true });
   if(tax > 0) rows.push({ k: '购置税', v: fmt(tax, 2) + ' 元' });
   if(ins > 0) rows.push({ k: '保险费（多退少补）', v: fmt(ins, 2) + ' 元' });
-  rows.push({ k: '首付款' + (d.loanMode === 'manual' ? '（按贷款额反算）' : '（' + fmt(dr.dpRate, 2) + '%）'), v: fmt(dr.downPayment, 0) + ' 元', strong: true });
+  rows.push({ k: '首付款（' + fmt(dr.dpRate, 2) + '%）', v: fmt(dr.downPayment, 2) + ' 元', strong: true });
   if(visible.length){
     rows.push({ sec: '月供参考' });
     visible.forEach(n => {
@@ -830,9 +885,15 @@ function buildXls(d){
   r2 += xlsRow([]);
   r2 += xlsRow([{ t: '二、贷款测算', style: 'Header', merge: 3 }]);
   r2 += xlsRow([{ t: '总车款（元）' }, { n: dr.totalPrice, style: 'Money0' }]);
-  r2 += xlsRow([{ t: '首付比例' }, { t: fmt(dr.dpRate, 4) + '%' }]);
+  r2 += xlsRow([{ t: '车辆类型' }, { t: (d.isNewEnergy !== false) ? '新能源' : '非新能源' }]);
+  r2 += xlsRow([{ t: '贷款范围' }, { t: '车价' + (d.financeTax ? '＋购置税' : '') + (d.financeIns ? '＋保险' : '') }]);
+  r2 += xlsRow([{ t: '贷款基数（元）' }, { n: dr.base, style: 'Money' }]);
+  r2 += xlsRow([{ t: '首付比例（实际）' }, { t: fmt(dr.dpRate, 2) + '%' }]);
   r2 += xlsRow([{ t: '首付款（元）' }, { n: dr.downPayment, style: 'Money' }]);
-  r2 += xlsRow([{ t: '贷款额（元）' }, { n: dr.loanAmount, style: 'MoneyBold' }]);
+  r2 += xlsRow([{ t: '贷款额（元，取整百）' }, { n: dr.loanAmount, style: 'MoneyBold' }]);
+  if(d.loanMode === 'auto'){
+    r2 += xlsRow([{ t: '说明' }, { t: '自动模式：贷款额按期望首付比例算出后向下取整百，取整差额并入首付款，首付比例按实际值更新。', merge: 3 }]);
+  }
   r2 += xlsRow([{ t: '年利率' }, { t: fmt(d.rate, 2) + '%' }]);
   r2 += xlsRow([{ t: '贷款银行' }, { t: d.bank || '' }]);
   r2 += xlsRow([{ t: '贴息（元/月）' }, { n: d.subsidy || 0, style: 'Money' }]);
@@ -957,7 +1018,11 @@ function applyData(d){
   $('f_headQty').value = d.headQty || 1;
   $('f_trailerPrice').value = d.trailerPrice || 0;
   $('f_trailerQty').value = d.trailerQty || 0;
-  $('f_dpRate').value = d.dpRate != null ? d.dpRate : 20;
+  state.dpTarget = (d.dpRate != null) ? d.dpRate : 20;
+  $('f_dpRate').value = state.dpTarget;
+  state.isNewEnergy = (d.isNewEnergy === undefined || d.isNewEnergy === null) ? true : !!d.isNewEnergy;
+  state.financeTax = !!d.financeTax;
+  state.financeIns = !!d.financeIns;
   $('f_rate').value = d.rate != null ? d.rate : 6.5;
   $('f_bank').value = d.bank || '';
   $('f_subsidy').value = d.subsidy || 0;
@@ -987,13 +1052,13 @@ function restoreDraft(){
 function resetAll(){
   if(!confirm('确定恢复默认参数？当前输入将被覆盖。')) return;
   localStorage.removeItem(LS_DRAFT);
-  applyData(null); state.feeItems = defaultFees(); state.showPeriods = { 24: true, 30: true, 36: true }; state.loanMode = 'auto'; state.loanInput = '';
+  applyData(null); state.feeItems = defaultFees(); state.showPeriods = { 24: true, 30: true, 36: true }; state.loanMode = 'auto'; state.loanInput = ''; state.dpTarget = 20; state.isNewEnergy = true; state.financeTax = false; state.financeIns = false;
   rebuildFees(); render(); toast('已恢复默认参数');
 }
 function clearDraft(){
   if(!confirm('确定清空本地草稿（不影响已保存的记录）？')) return;
   localStorage.removeItem(LS_DRAFT);
-  applyData(null); state.feeItems = defaultFees(); state.showPeriods = { 24: true, 30: true, 36: true }; state.loanMode = 'auto'; state.loanInput = '';
+  applyData(null); state.feeItems = defaultFees(); state.showPeriods = { 24: true, 30: true, 36: true }; state.loanMode = 'auto'; state.loanInput = ''; state.dpTarget = 20; state.isNewEnergy = true; state.financeTax = false; state.financeIns = false;
   rebuildFees(); render(); toast('已清空本地草稿');
 }
 function render(){
@@ -1001,15 +1066,19 @@ function render(){
   $('btnLoanAuto').classList.toggle('on', state.loanMode === 'auto');
   $('btnLoanManual').classList.toggle('on', state.loanMode === 'manual');
   $('f_loanInput').disabled = (state.loanMode === 'auto');
-  if(state.loanMode === 'auto'){
-    $('f_loanInput').value = dr.loanAmount;
-  }
-  $('f_dpRate').value = dr.dpRate;
+  if(state.loanMode === 'auto'){ $('f_loanInput').value = dr.loanAmount; }
+  $('btnTypeNE').classList.toggle('on', state.isNewEnergy !== false);
+  $('btnTypeICE').classList.toggle('on', state.isNewEnergy === false);
+  const cT = $('chipFinTax'); if(cT) cT.classList.toggle('on', !!state.financeTax);
+  const cI = $('chipFinIns'); if(cI) cI.classList.toggle('on', !!state.financeIns);
+  $('f_dpRate').value = state.dpTarget;
   $('v_totalPrice').textContent = fmt(dr.totalPrice, 0);
-  $('v_downPayment').textContent = fmt(dr.downPayment, 0);
+  $('v_base').textContent = fmt(dr.base, 2);
+  $('v_downPayment').textContent = fmt(dr.downPayment, 2);
   $('v_loanAmount').textContent = fmt(dr.loanAmount, 0);
+  const r2el = $('v_dpRate2'); if(r2el) r2el.textContent = fmt(dr.dpRate, 2) + '%';
   const carEl = $('feeCarAmt'); if(carEl) carEl.textContent = fmt(dr.totalPrice, 0);
-  const taxEl = $('feeTaxAmt'); if(taxEl) taxEl.textContent = fmt(autoTax(d), 2);
+  const taxEl = $('feeTaxAmt'); if(taxEl) taxEl.textContent = fmt(dr.tax, 2);
   $('v_feeTotal').textContent = fmt(dr.feeTotal, 2);
   $('v_actualDown').textContent = fmt(dr.actualDown, 2);
   renderPeriods(dr, d.rate, d.subsidy);
@@ -1021,7 +1090,7 @@ function bindInputs(){
   ['f_date','f_name','f_phone','f_contract','f_carName','f_headPrice','f_headQty','f_trailerPrice','f_trailerQty','f_rate','f_bank','f_subsidy'].forEach(id => {
     const el = $(id); if(el) el.addEventListener('input', render);
   });
-  $('f_dpRate').addEventListener('input', () => { state.loanMode = 'auto'; render(); });
+  $('f_dpRate').addEventListener('input', () => { state.loanMode = 'auto'; state.dpTarget = num('f_dpRate'); render(); });
   $('f_loanInput').addEventListener('input', () => { state.loanMode = 'manual'; state.loanInput = $('f_loanInput').value; render(); });
   if($('f_notes')) $('f_notes').addEventListener('input', render);
   if($('f_company')) $('f_company').addEventListener('input', e => {
@@ -1030,6 +1099,10 @@ function bindInputs(){
   });
   $('btnLoanAuto').addEventListener('click', () => setLoanMode('auto'));
   $('btnLoanManual').addEventListener('click', () => setLoanMode('manual'));
+  $('btnTypeNE').addEventListener('click', () => setVehicleType(true));
+  $('btnTypeICE').addEventListener('click', () => setVehicleType(false));
+  const cT = $('chipFinTax'); if(cT) cT.addEventListener('click', () => { state.financeTax = !state.financeTax; render(); });
+  const cI = $('chipFinIns'); if(cI) cI.addEventListener('click', () => { state.financeIns = !state.financeIns; render(); });
   $('btnGoResult').addEventListener('click', goResult);
   $('btnGoPreview').addEventListener('click', goPreview);
   $('btnBackEnter').addEventListener('click', goEnter);
@@ -1062,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 <script>
 if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('SW register failed', e); }); });
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(e){}); });
 }
 </script>
 </body>
