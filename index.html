@@ -499,13 +499,13 @@ function derived(d){
     downPayment = round2(base - loanAmount);
     dpRate = base > 0 ? round4(downPayment / base * 100) : 0;
   } else {
-    const downRaw = round2(base * d.dpRate / 100);   // 期望比例算出的首付款
-    let loan = base - downRaw;
-    loan = Math.floor(loan / 100) * 100;             // 贷款额向下取整到百
+    // 贷款额 = 贷款基数 × (1 − 首付比例 ÷ 100)，再向下取整到百
+    const loanRaw = base - base * d.dpRate / 100;
+    let loan = Math.floor(loanRaw / 100) * 100;      // 取整百
     if(loan < 0) loan = 0;
     loanAmount = round2(loan);
-    downPayment = round2(base - loanAmount);         // 取整差额并入首付款
-    dpRate = base > 0 ? round4(downPayment / base * 100) : 0;  // 实际首付比例
+    downPayment = round2(base - loanAmount);         // 取整多出的金额并入首付款
+    dpRate = base > 0 ? round4(downPayment / base * 100) : 0;  // 实际首付比例自动更新
   }
   let feeTotal = totalPrice;
   (d.feeItems || []).forEach(it => {
