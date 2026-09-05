@@ -222,9 +222,10 @@ table.mini tr.tot td{background:#eef4ff;font-weight:700}
         <div class="ro-box hl"><span>贷款额（取整百，元）</span><b id="v_loanAmount">0</b></div>
       </div>
       <p style="font-size:12.5px;color:var(--muted);margin-top:9px">
-        自动模式：首付款 = 贷款基数 × 期望首付比例 ÷ 100；贷款额自动向下取整到百，取整差额并入首付款，
-        首付比例按实际值自动更新。<b>实际首付比例：<span id="v_dpRate2" style="color:#1668dc">—</span></b><br>
-        贷款基数 = 总车款 ＋（勾选计入的购置税/保险）。手动模式：直接填贷款额，首付款 = 贷款基数 − 贷款额，首付比例自动反算。
+        自动模式：<b>首付款 = 贷款基数 − 贷款额</b>。贷款额 = 贷款基数 × (1 − 期望首付比例 ÷ 100)，
+        再向下取整到百；取整多出的金额自动并入首付款，首付比例按实际值更新。<b>实际首付比例：<span id="v_dpRate2" style="color:#1668dc">—</span></b><br>
+        贷款基数 = 总车款 ＋（勾选计入的购置税/保险）——三种范围：只贷车价 / 车价＋购置税或保险 / 车价＋购置税＋保险。
+        手动模式：直接填贷款额，首付款 = 贷款基数 − 贷款额，首付比例自动反算。
       </p>
     </div>
 
